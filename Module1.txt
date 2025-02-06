@@ -1,0 +1,177 @@
+Sub SuiviNGS()
+    'Macro réalisée par Louis PETRUS dans le cadre d'un stage en Bioinformatique
+    'Pour le service Immunologie et Immunogénétique (HLA), CHU pellegrin, 33000 Bordeaux
+    '05/2021
+    'On Error GoTo error
+    
+    Workbooks("suivi_Metrics_Controles_NGS.xlsm").Activate
+    Dim t_name As String
+    
+    'VARIABLES MODIFIABLES_____________
+    t_name = "T-ADN-FL" 'Nom du témoin
+    
+    Select Case MsgBoxPerso("Metrics et Controles NGS", "Que souhaitez-vous importer ?", t_name, "Métrics", "Annuler")
+    Case "Annuler"
+        Exit Sub
+    Case t_name
+        Tpos t_name
+    Case "Métrics"
+        metrics
+    End Select
+
+    Exit Sub
+error:
+    MsgBox "Une erreur est survenue"
+End Sub
+
+
+
+
+
+Function arrayCSV(t_name As String) As Variant
+    Dim MyLine As String, FileNum As Long, file1
+    Dim subArray As Variant, tempCSV As Variant
+    
+    file1 = Application.GetOpenFilename("csv Files,*.csv", _
+            1, "Select source file:", , False)
+    If file1 = False Then
+        MsgBox "Pas de fichier selectionné ou celui ci n'existe pas"
+        Exit Function
+    End If
+    
+    'Get an unused file number
+    FileNum = FreeFile
+    
+    Open file1 For Input As #FileNum
+    If Err.Number <> 0 Then
+        MsgBox "Erreur de lecture du fichier csv", vbCritical, "Error!"
+        Exit Function
+    End If
+    
+    Dim Items As Variant, sep As String
+
+    tempCSV = Array()
+    
+    While Not EOF(1)
+        Line Input #FileNum, MyLine
+        
+        sep = ","
+        
+        If UBound(tempCSV) < 1 Or InStr(MyLine, t_name) <> 0 Then
+            Items = Split(MyLine, sep)
+            Debug.Print (Join(Items, " | "))
+            
+            subArray = Array(Items(0))
+            If UBound(Items) > 0 Then
+                For i = 1 To UBound(Items)
+                    ReDim Preserve subArray(UBound(subArray) + 1)
+                    subArray(UBound(subArray)) = Items(i)
+                Next i
+            End If
+            
+            If IsEmpty(tempCSV) Then
+                tempCSV = Array(subArray)
+            Else
+                ReDim Preserve tempCSV(UBound(tempCSV) + 1)
+                tempCSV(UBound(tempCSV)) = subArray
+            End If
+        End If
+    Wend
+    
+    Close #FileNum
+    arrayCSV = tempCSV
+    
+    
+    'mise en forme CSV d'origine pour secrétaire
+    Workbooks.Open (file1)
+    Columns("A:A").Select
+    Selection.TextToColumns Destination:=Range("A1"), DataType:=xlDelimited, _
+        TextQualifier:=xlDoubleQuote, ConsecutiveDelimiter:=False, Tab:=True, _
+        Semicolon:=False, Comma:=True, Space:=False, Other:=False, FieldInfo _
+        :=Array(1, 1), TrailingMinusNumbers:=True
+    
+    Dim attribut As Object
+    
+    'selection colonnes d'intéret
+    For col = ActiveSheet.Cells.SpecialCells(xlCellTypeLastCell).Column To 1 Step -1
+        Set attribut = Cells(2, col)
+        If attribut = "Session Name" Or attribut = "Barcode" Or attribut Like "Sample*" Or attribut = "Locus" Or attribut = "Allele1" Or attribut = "Allele2" Then
+        Else
+            Columns(col).Delete Shift:=xlToLeft
+        End If
+    Next col
+    
+    'attribution alleles à rendre
+    Dim all_1 As Object, all_2 As Object, all_1_rendu As Object, all_2_rendu As Object, continue As Boolean
+    
+    Set all_1 = Rows(2).Find("Allele1")
+    Set all_2 = Rows(2).Find("Allele2")
+    
+    If Not all_1 Is Nothing And Not all_2 Is Nothing Then
+        Set all_1_rendu = Cells(2, Cells(2, 1).End(xlToRight).Column + 2)
+        With all_1_rendu
+            .Value = "Rendre Allele 1"
+            .Font.Bold = True
+        End With
+        Set all_2_rendu = Cells(2, all_1_rendu.Column + 1)
+        With all_2_rendu
+            .Value = "Rendre Allele 2"
+            .Font.Bold = True
+        End With
+        'parcours les lignes du fichier TSV
+        For Each ligne In Range(Cells(3, 1), Cells(3, 1).End(xlDown))
+            continue = True
+            
+            'parcours les ambiguites de la liste
+            For Each ambiguite In Range(Workbooks("suivi_Metrics_Controles_NGS.xlsm").Worksheets("Ambiguites").Cells(2, 1), Workbooks("suivi_Metrics_Controles_NGS.xlsm").Worksheets("Ambiguites").Cells(2, 1).End(xlDown))
+                If Cells(ligne.row, all_1.Column).Value = ambiguite.Value Then
+                    Cells(ligne.row, all_1_rendu.Column).Value = Workbooks("suivi_Metrics_Controles_NGS.xlsm").Worksheets("Ambiguites").Cells(ambiguite.row, 2).Value
+                    If continue = False Then
+                        Exit For
+                    Else
+                        continue = False
+                    End If
+                End If
+                If Cells(ligne.row, all_2.Column).Value = ambiguite.Value Then
+                    Cells(ligne.row, all_2_rendu.Column).Value = Workbooks("suivi_Metrics_Controles_NGS.xlsm").Worksheets("Ambiguites").Cells(ambiguite.row, 2).Value
+                    If continue = False Then
+                        Exit For
+                    Else
+                        continue = False
+                    End If
+                End If
+            Next ambiguite
+            
+            'report des alleles si aucune ambiguite retrouvée
+            If Cells(ligne.row, all_1_rendu.Column).Value = "" Then
+                Cells(ligne.row, all_1_rendu.Column).Value = Cells(ligne.row, all_1.Column).Value
+            End If
+            If Cells(ligne.row, all_2_rendu.Column).Value = "" Then
+                Cells(ligne.row, all_2_rendu.Column).Value = Cells(ligne.row, all_2.Column).Value
+            End If
+        Next ligne
+        
+        'couleur de fond nouvelles colonnes
+        Range(Cells(all_1_rendu.row + 1, all_1_rendu.Column), Cells(Cells(3, 1).End(xlDown).row, all_2_rendu.Column)).Interior.Color = RGB(174, 240, 194)
+    
+    End If
+    
+    'ActiveWorkbook.Save
+    'ActiveWorkbook.Close
+    
+End Function
+
+Function exist(arr As Variant, val As String) As Boolean
+    For Each Value In arr
+        If Value = val Then
+            exist = True
+            Exit Function
+        End If
+    Next Value
+    exist = False
+End Function
+
+
+Sub lastRow()
+    Cells(20, 1).End(xlDown).Activate
+End Sub
