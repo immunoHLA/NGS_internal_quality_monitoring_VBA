@@ -1,0 +1,28 @@
+Sub metrics()
+
+    Workbooks("suivi_Metrics_Controles_NGS.xlsm").Worksheets("Metrics").Activate
+
+    Set startTab = Cells.Find("N° de manip", LookIn:=xlValues) 'N° de manip
+    
+    Dim cellLastRow As Object, lastRow As Integer
+    Set cellLastRow = startTab.End(xlDown)
+    lastRow = cellLastRow.row
+    
+    For Each cell In Range(startTab, Cells(startTab.row, startTab.End(xlToRight).Column - 1)) 'parcours les attributs
+        If cell.Value = "N° de manip" Then
+            UserForm1.Show
+        Else
+            resultat = InputBox("Entrez la valeur pour : " & cell.Value & " ( " & Cells(cell.row + 1, cell.Column) & " )", "Métrics", Cells(lastRow, cell.Column))
+            If cell.Value = "Initiales Lecteur" Then
+                Cells(lastRow + 1, cell.Column).Value = UCase(resultat)
+            Else
+                Cells(lastRow + 1, cell.Column).Value = resultat
+            End If
+        End If
+
+    Next cell
+    Cells(lastRow + 1, startTab.End(xlToRight).Column) = Date
+    
+    ActiveWorkbook.Save
+    
+End Sub
