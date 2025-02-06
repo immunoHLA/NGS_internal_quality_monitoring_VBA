@@ -61,7 +61,7 @@ Sub Tpos(t_name As String)
             End If
             
             'Tech
-            Cells(lastRow + 1, 2) = tech 'UCase(csv(ligne)(techCol))
+            'Cells(lastRow + 1, 2) = tech 'UCase(csv(ligne)(techCol))
             
             'Ident
             Cells(lastRow + 1, 3) = t_name
