@@ -1,0 +1,27 @@
+Private Sub CommandButton1_Click()
+    Dim startTab As Object, lastRow As Integer, id_run As String, idx As Integer
+    Set startTab = Cells.Find("N° de manip", LookIn:=xlValues) 'N° de manip
+    lastRow = startTab.End(xlDown).row
+    
+    id_run = Cells(lastRow, startTab.Column).Value
+    
+    If id_run <> "" Then
+        idx = lastRow
+        While Cells(idx - 1, startTab.Column).Value = id_run And idx > 0
+            idx = idx - 1
+        Wend
+        
+        Range(Cells(idx, 2), Cells(lastRow, 2)).Merge
+        Cells(idx, 2) = Me.TextBox1.Value
+        
+    Else
+        MsgBox "Une erreur n'a pas permis d'entrer les initiales sur le tableur." & Chr(10) & Chr(10) & "Veuillez les entrer manuellement."
+    End If
+    
+    Unload Me
+End Sub
+
+Private Sub CommandButton2_Click()
+    Unload Me
+    
+End Sub
