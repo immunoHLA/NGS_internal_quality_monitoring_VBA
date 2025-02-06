@@ -1,0 +1,83 @@
+
+Option Explicit
+ 
+'Fonctions windows
+Private Declare Function GetCurrentThreadId Lib "kernel32" () As Long
+Private Declare Function SetWindowsHookEx& Lib "USER32" Alias "SetWindowsHookExA" (ByVal idHook&, ByVal lpfn&, ByVal hmod&, ByVal dwThreadId&)
+Private Declare Function UnhookWindowsHookEx& Lib "USER32" (ByVal hHook&)
+Private Declare Function CallNextHookEx Lib "USER32" (ByVal hHook As Long, ByVal CodeNo As Long, ByVal wParam As Long, ByVal lParam As Long) As Long
+Private Declare Function GetWindow Lib "USER32" (ByVal hWnd As Long, ByVal wCmd As Long) As Long
+Private Declare Function SetWindowText Lib "USER32" Alias "SetWindowTextA" (ByVal hWnd As Long, ByVal lpString As String) As Long
+ 
+'Variables
+Private Type CWPSTRUCT
+  lParam As Long
+  wParam As Long
+  Message As Long
+  hWnd As Long
+End Type
+ 
+Private msgHook&, hInstance&
+Private TitleMsgBox As String, strMsg As String, BtnTitle(3) As String
+ 
+Public Function MsgBoxPerso(sTitle As String, sMsg As String, sB1 As String, sB2 As String, sB3 As String)
+'Pour personnalisé le titre, le message et les boutons
+'Ici 3 boutons obligatoires.  On pourrait aller plus loin en faisant un select case pour le nombre de bouton,
+'Il faudrait alors ajuster le choix du type de message de base. Ici j'ai choisi vbAbortRetryIgnore parce que le but
+'était d'avoir 3 boutons.
+  Const WH_CBT = 5
+  Dim Reply As Integer
+  'Ici on inscrit les nouveaux titres sur les boutons
+  BtnTitle(1) = sB1: BtnTitle(2) = sB2: BtnTitle(3) = sB3
+  'set up the hook
+  msgHook = SetWindowsHookEx(WH_CBT, AddressOf MsgBoxTitleBtnProc, hInstance, GetCurrentThreadId())
+  'call  function
+  Reply = MsgBox(sMsg, vbAbortRetryIgnore + vbQuestion, sTitle)
+  'free the hook
+  UnhookWindowsHookEx msgHook
+  'Selon le bouton choisi si on veut autre chose que les constantes Windows
+  'On pourrait passer la réponse dans la fonction pour avoir autre chose que le titre des boutons.
+  Select Case Reply
+    Case vbAbort
+       MsgBoxPerso = sB1
+    Case vbRetry
+        MsgBoxPerso = sB2
+    Case vbIgnore
+        MsgBoxPerso = sB3
+  End Select
+  Erase BtnTitle
+
+ 
+End Function
+ 
+Private Function MsgBoxTitleBtnProc(ByVal nCode As Long, ByVal wParam As Long, ByVal lParam As Long) As Long
+ 
+  Const HCBT_ACTIVATE = 5
+  Const GW_CHILD = 5
+  Const GW_HWNDNEXT = 2
+  If nCode < 0 Then
+    MsgBoxTitleBtnProc = CallNextHookEx(msgHook, nCode, wParam, lParam)
+    Exit Function
+  End If
+    If nCode = HCBT_ACTIVATE Then
+    Dim hWndChild As Long, hWndChildNext As Long
+    'premier bouton: Abort button
+    hWndChild = GetWindow(wParam, GW_CHILD)
+    'changer pour sB1
+    Call SetWindowText(hWndChild, BtnTitle(1))
+    'deuxième bouton: Retry button
+    hWndChildNext = GetWindow(hWndChild, GW_HWNDNEXT)
+    hWndChild = hWndChildNext
+    'changer pour sB2
+    Call SetWindowText(hWndChild, BtnTitle(2))
+    'Troisième bouton: Ignore
+    hWndChildNext = GetWindow(hWndChild, GW_HWNDNEXT)
+    hWndChild = hWndChildNext
+    'changer pour sB3
+    Call SetWindowText(hWndChild, BtnTitle(3))
+ 
+  End If
+  ' processing...
+  MsgBoxTitleBtnProc = False
+ 
+End Function
