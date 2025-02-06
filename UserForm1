@@ -1,0 +1,56 @@
+Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
+    If CloseMode = 0 Then
+        Cancel = True
+        Call CommandButton3_Click
+    End If
+End Sub
+
+Private Sub UserForm_Activate()
+ 
+    With Application
+        LargeurFenetre = .Width
+        HauteurFenetre = .Height
+        PositionGauche = .Left
+        PositionHaut = .Top
+     End With
+     With Me
+      .Left = (PositionGauche + LargeurFenetre) - ((LargeurFenetre + .Width) / 2)
+      .Top = (PositionHaut + HauteurFenetre) - ((HauteurFenetre + .Height) / 2)
+     End With
+
+     
+ 
+End Sub
+
+Private Sub CommandButton3_Click()
+    End
+End Sub
+
+
+Private Sub UserForm_Initialize()
+    Dim c As Object
+    Set c = Cells.Find("Initiales manipulateurs.rices")
+    
+    ComboBox1.AddItem " "
+    For Each i In Range(Cells(c.row + 1, c.Column), c.End(xlDown))
+        ComboBox1.AddItem i
+    Next
+    
+    
+End Sub
+
+Private Sub CommandButton2_Click()
+    If ComboBox1.Value = " " Or ComboBox1.Value = "" Then
+        MsgBox "Veuillez choisir les initiales du technicien ayant réalisé cette série NGS"
+        Exit Sub
+    End If
+    
+    
+    
+    Dim cellIdSerie As Object
+    Set cellIdSerie = ActiveWorkbook.ActiveSheet.Cells.Find("N° de manip")
+    
+    Cells(cellIdSerie.End(xlDown).row + 1, cellIdSerie.Column) = "NGS-" + CStr(TextBox1.Value) + "-" + CStr(ComboBox1.Value)
+    
+    Unload Me
+End Sub
